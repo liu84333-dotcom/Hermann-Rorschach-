@@ -1,0 +1,873 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>墨迹联想测试</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;400;600&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
+<style>
+:root {
+  --ink: #1a1210;
+  --paper: #f7f3ee;
+  --paper2: #efe9e0;
+  --accent: #8b2e2e;
+  --muted: #7a6f64;
+  --border: rgba(26,18,16,0.12);
+  --card: #faf7f3;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: 'Noto Serif SC', serif;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* grain texture overlay */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 1000;
+  opacity: 0.6;
+}
+
+.screen { display: none; min-height: 100vh; }
+.screen.active { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 2rem 1.5rem; }
+
+/* ── INTRO ── */
+#screen-intro { background: var(--paper); }
+.intro-inner { max-width: 480px; width: 100%; text-align: center; }
+
+.logo-mark {
+  width: 72px; height: 72px;
+  margin: 0 auto 2rem;
+  position: relative;
+}
+.logo-mark canvas { width: 72px; height: 72px; }
+
+h1 {
+  font-family: 'DM Serif Display', serif;
+  font-size: clamp(2rem, 6vw, 2.8rem);
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  margin-bottom: 0.5rem;
+  color: var(--ink);
+}
+h1 em { font-style: italic; color: var(--accent); }
+
+.subtitle {
+  font-size: 13px;
+  color: var(--muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 2rem;
+}
+
+.divider {
+  width: 48px; height: 1px;
+  background: var(--border);
+  margin: 1.5rem auto;
+}
+
+.intro-desc {
+  font-size: 14px;
+  color: var(--muted);
+  line-height: 2;
+  margin-bottom: 2.5rem;
+}
+
+.btn-start {
+  display: inline-block;
+  background: var(--ink);
+  color: var(--paper);
+  font-family: 'Noto Serif SC', serif;
+  font-size: 14px;
+  letter-spacing: 0.1em;
+  padding: 14px 40px;
+  border: none;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.1s;
+  position: relative;
+  overflow: hidden;
+}
+.btn-start::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--accent);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.3s ease;
+}
+.btn-start:hover::after { transform: scaleX(1); }
+.btn-start span { position: relative; z-index: 1; }
+.btn-start:active { transform: scale(0.98); }
+
+.card-count {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 1.5rem;
+  letter-spacing: 0.05em;
+}
+
+/* ── TEST ── */
+#screen-test { background: var(--paper); justify-content: flex-start; padding-top: 0; }
+.test-inner { max-width: 600px; width: 100%; padding: 2rem 0; }
+
+.progress-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  padding: 0 0.25rem;
+}
+.progress-label {
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.progress-track {
+  width: 120px; height: 1px;
+  background: var(--border);
+  position: relative;
+}
+.progress-fill {
+  position: absolute;
+  left: 0; top: 0; height: 1px;
+  background: var(--accent);
+  transition: width 0.5s ease;
+}
+
+.inkblot-stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+
+.inkblot-wrap {
+  position: relative;
+  width: 320px; height: 320px;
+  animation: fadeInBlot 0.8s ease forwards;
+}
+@keyframes fadeInBlot {
+  from { opacity: 0; transform: scale(0.94); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+#inkblot-canvas {
+  width: 320px; height: 320px;
+  display: block;
+  filter: drop-shadow(0 8px 32px rgba(26,18,16,0.18));
+}
+
+.blot-number {
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-top: 1rem;
+}
+
+.question-section { width: 100%; }
+
+.q-prompt {
+  font-family: 'DM Serif Display', serif;
+  font-size: 1.25rem;
+  font-weight: 400;
+  color: var(--ink);
+  margin-bottom: 0.5rem;
+  line-height: 1.5;
+}
+.q-hint {
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 1rem;
+  line-height: 1.7;
+}
+
+.answer-input {
+  width: 100%;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-bottom: 2px solid var(--ink);
+  font-family: 'Noto Serif SC', serif;
+  font-size: 15px;
+  color: var(--ink);
+  padding: 12px 14px;
+  resize: vertical;
+  min-height: 80px;
+  outline: none;
+  transition: border-color 0.2s, background 0.2s;
+  line-height: 1.8;
+}
+.answer-input:focus {
+  background: #fff;
+  border-bottom-color: var(--accent);
+}
+.answer-input::placeholder { color: var(--muted); font-style: italic; }
+
+.tags-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 1rem;
+}
+.tag-btn {
+  font-size: 12px;
+  font-family: 'Noto Serif SC', serif;
+  padding: 5px 12px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition: all 0.15s;
+  letter-spacing: 0.03em;
+}
+.tag-btn:hover { border-color: var(--ink); color: var(--ink); }
+.tag-btn.active { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+
+.nav-row {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 1.5rem;
+}
+.btn-next {
+  font-family: 'Noto Serif SC', serif;
+  font-size: 13px;
+  letter-spacing: 0.1em;
+  padding: 11px 32px;
+  background: var(--ink);
+  color: var(--paper);
+  border: none;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.btn-next:hover { background: var(--accent); }
+.btn-next:disabled { background: var(--border); color: var(--muted); cursor: not-allowed; }
+
+/* ── RESULT ── */
+#screen-result {
+  background: var(--paper);
+  justify-content: flex-start;
+  padding-top: 3rem;
+  padding-bottom: 4rem;
+}
+.result-inner { max-width: 560px; width: 100%; }
+
+.result-header { margin-bottom: 2.5rem; }
+.result-eyebrow {
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 0.75rem;
+}
+.result-title {
+  font-family: 'DM Serif Display', serif;
+  font-size: clamp(1.8rem, 5vw, 2.4rem);
+  font-weight: 400;
+  line-height: 1.15;
+  margin-bottom: 0.5rem;
+}
+.result-type-badge {
+  display: inline-block;
+  background: var(--ink);
+  color: var(--paper);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 4px 12px;
+  margin-top: 0.5rem;
+}
+
+.result-section { margin-bottom: 2rem; }
+.result-section-label {
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.trait-bars { display: flex; flex-direction: column; gap: 12px; }
+.trait-row { display: flex; align-items: center; gap: 12px; }
+.trait-name { font-size: 13px; color: var(--ink); min-width: 80px; }
+.trait-track {
+  flex: 1; height: 3px;
+  background: var(--paper2);
+  position: relative;
+}
+.trait-bar {
+  position: absolute;
+  left: 0; top: 0; height: 3px;
+  background: var(--accent);
+  transition: width 1s ease;
+  width: 0;
+}
+.trait-val { font-size: 12px; color: var(--muted); min-width: 28px; text-align: right; }
+
+.desc-block {
+  font-size: 14px;
+  color: var(--ink);
+  line-height: 2;
+  background: var(--card);
+  border-left: 3px solid var(--accent);
+  padding: 1rem 1.25rem;
+}
+
+.answers-review { display: flex; flex-direction: column; gap: 1rem; }
+.answer-item {
+  padding: 1rem 0;
+  border-bottom: 1px solid var(--border);
+}
+.answer-item-blot {
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 0.25rem;
+}
+.answer-item-text {
+  font-size: 14px;
+  color: var(--ink);
+  line-height: 1.7;
+  font-style: italic;
+}
+.answer-item-tags {
+  font-size: 11px;
+  color: var(--accent);
+  margin-top: 0.25rem;
+}
+
+.suggestion-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.suggestion-item {
+  display: flex;
+  gap: 12px;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--ink);
+}
+.sug-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  flex-shrink: 0;
+  margin-top: 7px;
+}
+
+.result-actions { display: flex; gap: 12px; margin-top: 2.5rem; flex-wrap: wrap; }
+.btn-outline {
+  font-family: 'Noto Serif SC', serif;
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  padding: 11px 28px;
+  border: 1px solid var(--ink);
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.btn-outline:hover { background: var(--ink); color: var(--paper); }
+
+.disclaimer {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 2rem;
+  line-height: 1.8;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+}
+
+/* loading blot transition */
+.blot-fade { animation: fadeInBlot 0.6s ease forwards; }
+</style>
+</head>
+<body>
+
+<!-- INTRO -->
+<div id="screen-intro" class="screen active">
+  <div class="intro-inner">
+    <div class="logo-mark">
+      <canvas id="logo-canvas" width="144" height="144"></canvas>
+    </div>
+    <p class="subtitle">投射联想测试</p>
+    <h1>你在墨迹中<br><em>看见什么</em>？</h1>
+    <div class="divider"></div>
+    <p class="intro-desc">
+      算法随机生成的对称墨迹图形，<br>
+      没有标准答案，只有你的内心独白。<br>
+      说出第一眼的联想，探索你的思维倾向。
+    </p>
+    <button class="btn-start" onclick="startTest()"><span>开始测试</span></button>
+    <p class="card-count">共 8 张墨迹图 · 约 5 分钟</p>
+  </div>
+</div>
+
+<!-- TEST -->
+<div id="screen-test" class="screen">
+  <div class="test-inner">
+    <div class="progress-header">
+      <span class="progress-label" id="prog-label">图版 1 / 8</span>
+      <div class="progress-track">
+        <div class="progress-fill" id="prog-fill" style="width:12.5%"></div>
+      </div>
+    </div>
+
+    <div class="inkblot-stage">
+      <div class="inkblot-wrap">
+        <canvas id="inkblot-canvas" width="640" height="640"></canvas>
+      </div>
+      <p class="blot-number" id="blot-number">No. I</p>
+    </div>
+
+    <div class="question-section">
+      <p class="q-prompt" id="q-prompt">你第一眼看到了什么？</p>
+      <p class="q-hint" id="q-hint">写下任何浮现的事物、情感或场景，越直觉越好。</p>
+      <textarea class="answer-input" id="answer-input" placeholder="在这里写下你的联想…"></textarea>
+      <div class="tags-row" id="tags-row"></div>
+      <div class="nav-row">
+        <button class="btn-next" id="btn-next" onclick="nextCard()">下一张</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- RESULT -->
+<div id="screen-result" class="screen">
+  <div class="result-inner">
+    <div class="result-header">
+      <p class="result-eyebrow">你的测试报告</p>
+      <h2 class="result-title" id="res-title">—</h2>
+      <div class="result-type-badge" id="res-badge">—</div>
+    </div>
+
+    <div class="result-section">
+      <p class="result-section-label">思维特质雷达</p>
+      <div class="trait-bars" id="trait-bars"></div>
+    </div>
+
+    <div class="result-section">
+      <p class="result-section-label">解读</p>
+      <div class="desc-block" id="res-desc">—</div>
+    </div>
+
+    <div class="result-section">
+      <p class="result-section-label">你的联想记录</p>
+      <div class="answers-review" id="answers-review"></div>
+    </div>
+
+    <div class="result-section">
+      <p class="result-section-label">给你的小建议</p>
+      <div class="suggestion-list" id="suggestions"></div>
+    </div>
+
+    <p class="disclaimer">
+      ⚠ 本测试为趣味性投射联想游戏，墨迹图形由算法随机生成，分析结果基于语义统计模型，不构成任何心理学临床诊断，请理性参考。
+    </p>
+
+    <div class="result-actions">
+      <button class="btn-outline" onclick="restartTest()">再测一次</button>
+      <button class="btn-outline" onclick="shareResult()">复制结果分享</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─────────────────────────────────────────
+// INKBLOT GENERATOR
+// ─────────────────────────────────────────
+function seededRand(seed) {
+  let s = seed;
+  return () => { s = (s * 1664525 + 1013904223) & 0xffffffff; return (s >>> 0) / 0xffffffff; };
+}
+
+function generateInkblot(canvas, seed, palette) {
+  const SIZE = canvas.width;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, SIZE, SIZE);
+  const rand = seededRand(seed);
+  const half = SIZE / 2;
+
+  // offscreen left half
+  const off = document.createElement('canvas');
+  off.width = half; off.height = SIZE;
+  const oc = off.getContext('2d');
+
+  oc.fillStyle = 'transparent';
+
+  const numBlobs = 8 + Math.floor(rand() * 10);
+  const colors = palette || ['#1a1210'];
+
+  for (let b = 0; b < numBlobs; b++) {
+    const cx = rand() * half * 0.85;
+    const cy = SIZE * 0.15 + rand() * SIZE * 0.7;
+    const rx = 18 + rand() * 80;
+    const ry = 14 + rand() * 70;
+    const rot = rand() * Math.PI;
+    const alpha = 0.35 + rand() * 0.65;
+    const color = colors[Math.floor(rand() * colors.length)];
+
+    oc.save();
+    oc.globalAlpha = alpha;
+    oc.translate(cx, cy);
+    oc.rotate(rot);
+
+    // organic blob via bezier
+    oc.beginPath();
+    const pts = 5 + Math.floor(rand() * 5);
+    for (let i = 0; i < pts; i++) {
+      const a = (i / pts) * Math.PI * 2;
+      const wobble = 0.7 + rand() * 0.6;
+      const x = Math.cos(a) * rx * wobble;
+      const y = Math.sin(a) * ry * wobble;
+      if (i === 0) oc.moveTo(x, y);
+      else {
+        const cp1x = Math.cos(a - Math.PI / pts) * rx * (0.9 + rand() * 0.4);
+        const cp1y = Math.sin(a - Math.PI / pts) * ry * (0.9 + rand() * 0.4);
+        oc.quadraticCurveTo(cp1x, cp1y, x, y);
+      }
+    }
+    oc.closePath();
+    oc.fillStyle = color;
+    oc.fill();
+    oc.restore();
+  }
+
+  // drips
+  const numDrips = Math.floor(rand() * 5);
+  for (let d = 0; d < numDrips; d++) {
+    const dx = rand() * half * 0.9;
+    const dy = SIZE * 0.2 + rand() * SIZE * 0.5;
+    const dh = 10 + rand() * 40;
+    const dw = 2 + rand() * 8;
+    oc.globalAlpha = 0.4 + rand() * 0.5;
+    oc.fillStyle = colors[0];
+    oc.beginPath();
+    oc.ellipse(dx, dy + dh / 2, dw / 2, dh / 2, 0, 0, Math.PI * 2);
+    oc.fill();
+  }
+
+  // composite onto main canvas (left + mirror right)
+  ctx.save();
+  ctx.drawImage(off, half, 0); // right side (mirror)
+  ctx.save();
+  ctx.translate(SIZE, 0);
+  ctx.scale(-1, 1);
+  ctx.drawImage(off, half, 0);
+  ctx.restore();
+  ctx.restore();
+
+  // center spine detail
+  const spineRand = seededRand(seed + 99);
+  ctx.globalAlpha = 0.25 + spineRand() * 0.3;
+  ctx.fillStyle = colors[0];
+  const sh = 30 + spineRand() * 80;
+  ctx.beginPath();
+  ctx.ellipse(half, SIZE / 2, 4 + spineRand() * 8, sh, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.globalAlpha = 1;
+}
+
+// ─────────────────────────────────────────
+// QUESTIONS & TAGS
+// ─────────────────────────────────────────
+const CARDS = [
+  {
+    prompt: '你第一眼看到了什么？',
+    hint: '写下任何浮现的事物，越直觉越好。',
+    tags: ['动物', '人物', '自然', '器物', '抽象', '建筑'],
+    key: 'firstImpression',
+    seed: 1847362,
+    palette: ['#1a1210']
+  },
+  {
+    prompt: '这个形状让你感觉到什么情绪？',
+    hint: '关注你内心升起的感受，不必解释原因。',
+    tags: ['平静', '紧张', '好奇', '恐惧', '温暖', '孤独', '快乐', '忧郁'],
+    key: 'emotion',
+    seed: 9283741,
+    palette: ['#1a1210']
+  },
+  {
+    prompt: '如果这是一个故事，正在发生什么？',
+    hint: '用几句话描述你脑海中浮现的场景或情节。',
+    tags: ['追逐', '相遇', '分离', '战斗', '守护', '漂流', '变形', '沉睡'],
+    key: 'story',
+    seed: 5619274,
+    palette: ['#1a1210', '#2e1a1a']
+  },
+  {
+    prompt: '画面中最吸引你注意的是哪个部分？',
+    hint: '是整体、边缘、中间，还是某个细节？',
+    tags: ['中心', '边缘', '对称轴', '某个角落', '整体轮廓', '内部细节'],
+    key: 'focus',
+    seed: 3748291,
+    palette: ['#1a1210']
+  },
+  {
+    prompt: '这让你想起了谁或什么？',
+    hint: '可以是一个人、一段记忆、一本书或一部电影。',
+    tags: ['童年', '家人', '朋友', '恋人', '陌生人', '书中人物', '梦中场景'],
+    key: 'association',
+    seed: 6172849,
+    palette: ['#1a1210', '#1a1a2e']
+  },
+  {
+    prompt: '如果给这张图起一个名字，你会叫它什么？',
+    hint: '可以是一个词，也可以是一句诗。',
+    tags: ['—'],
+    key: 'name',
+    seed: 8374619,
+    palette: ['#1a1210']
+  },
+  {
+    prompt: '这个形状是在运动还是静止的？',
+    hint: '它给你一种动态还是凝固的感觉？',
+    tags: ['快速飞舞', '缓慢展开', '完全静止', '即将爆发', '轻盈漂浮', '沉重下坠'],
+    key: 'motion',
+    seed: 2938471,
+    palette: ['#1a1210']
+  },
+  {
+    prompt: '看完所有图案，现在你感受如何？',
+    hint: '用一两句话描述此刻的整体感受。',
+    tags: ['放松', '疲惫', '兴奋', '沉思', '愉悦', '困惑', '平和'],
+    key: 'overall',
+    seed: 7461928,
+    palette: ['#1a1210']
+  }
+];
+
+const ROMAN = ['I','II','III','IV','V','VI','VII','VIII'];
+
+let currentCard = 0;
+let answers = [];
+let selectedTags = [];
+
+function startTest() {
+  document.getElementById('screen-intro').classList.remove('active');
+  document.getElementById('screen-test').classList.add('active');
+  loadCard(0);
+}
+
+function loadCard(idx) {
+  currentCard = idx;
+  selectedTags = [];
+  const card = CARDS[idx];
+
+  document.getElementById('prog-label').textContent = `图版 ${idx + 1} / 8`;
+  document.getElementById('prog-fill').style.width = ((idx + 1) / 8 * 100) + '%';
+  document.getElementById('blot-number').textContent = 'No. ' + ROMAN[idx];
+  document.getElementById('q-prompt').textContent = card.prompt;
+  document.getElementById('q-hint').textContent = card.hint;
+  document.getElementById('answer-input').value = '';
+
+  // generate inkblot
+  const canvas = document.getElementById('inkblot-canvas');
+  canvas.classList.remove('blot-fade');
+  void canvas.offsetWidth;
+  canvas.classList.add('blot-fade');
+  generateInkblot(canvas, card.seed, card.palette);
+
+  // tags
+  const tr = document.getElementById('tags-row');
+  tr.innerHTML = '';
+  if (card.tags[0] !== '—') {
+    card.tags.forEach(t => {
+      const btn = document.createElement('button');
+      btn.className = 'tag-btn';
+      btn.textContent = t;
+      btn.onclick = () => toggleTag(btn, t);
+      tr.appendChild(btn);
+    });
+  }
+
+  // logo canvas on intro
+  const nextBtn = document.getElementById('btn-next');
+  nextBtn.textContent = idx < 7 ? '下一张' : '查看报告';
+}
+
+function toggleTag(btn, tag) {
+  const i = selectedTags.indexOf(tag);
+  if (i === -1) { selectedTags.push(tag); btn.classList.add('active'); }
+  else { selectedTags.splice(i, 1); btn.classList.remove('active'); }
+}
+
+function nextCard() {
+  const text = document.getElementById('answer-input').value.trim();
+  answers.push({ card: currentCard, text, tags: [...selectedTags] });
+
+  if (currentCard < 7) {
+    loadCard(currentCard + 1);
+  } else {
+    showResult();
+  }
+}
+
+// ─────────────────────────────────────────
+// ANALYSIS ENGINE
+// ─────────────────────────────────────────
+const TRAIT_KEYWORDS = {
+  '想象力': ['飞', '幻', '龙', '翅', '魔', '梦', '云', '星', '仙', '故事', '奇', '神秘', '童话', '幻想', '创造', '画', '诗', '虚构'],
+  '情感敏感': ['悲', '哭', '暖', '爱', '孤', '寂', '思念', '感动', '温柔', '心', '情', '泪', '拥抱', '牵挂', '柔', '忧', '甜'],
+  '逻辑思维': ['对称', '结构', '规律', '图案', '形状', '几何', '分析', '比例', '轮廓', '平衡', '系统', '角度', '直线', '框架'],
+  '社交倾向': ['人', '友', '聚', '群', '家', '朋友', '相遇', '交流', '团', '合作', '一起', '握手', '对话', '伙伴'],
+  '内省深度': ['孤', '静', '思', '深', '内', '独', '沉默', '反思', '自我', '冥想', '安静', '独处', '内心', '沉思'],
+};
+
+const TYPES = [
+  {
+    name: '诗意的漫游者',
+    badge: '创造型 · 感性',
+    desc: '你的联想充满意象与情感，思维如同在画布上自由流动。你倾向于用隐喻和故事来理解世界，对美与细节有天然的敏感。在人群中，你是那个能看见别人看不见的东西的人。',
+    cond: (t) => t['想象力'] > 2 && t['情感敏感'] > 1,
+    suggestions: ['尝试写一篇短篇故事或诗歌，记录这次联想', '你的创造力在独处时最旺盛，给自己留一些安静时光', '与他人分享你的想象，你的视角往往令人惊喜']
+  },
+  {
+    name: '冷静的解构者',
+    badge: '分析型 · 理性',
+    desc: '你倾向于关注图形的结构与规律，用逻辑框架来整理感知。你不容易被表象迷惑，善于发现隐藏的模式。这种特质让你在复杂问题面前保持清醒，但有时也可能错过情感的细节。',
+    cond: (t) => t['逻辑思维'] > 2,
+    suggestions: ['试着偶尔放下分析，只是"感受"而不"理解"', '你的逻辑直觉是一种天赋，善加利用', '在决策时，也给直觉一点空间']
+  },
+  {
+    name: '温暖的联结者',
+    badge: '社交型 · 共情',
+    desc: '你的第一反应几乎总是和"人"有关——人物、关系、故事中的情感连接。你天然地关心他人，善于共情，在群体中往往是维系情感的核心。你的世界是由关系编织的。',
+    cond: (t) => t['社交倾向'] > 2,
+    suggestions: ['你天生善于倾听，这是一种珍贵的能力', '注意照顾自己的情绪，不要总是付出', '尝试一次深度的独处，了解离开关系之后的自己']
+  },
+  {
+    name: '深邃的思考者',
+    badge: '内省型 · 深沉',
+    desc: '你更容易被寂静、孤独、深层的意象吸引。你倾向于向内探索，对自我有独特的观察力。你不随波逐流，思考有自己的节奏与深度。这让你的内心世界丰富而复杂。',
+    cond: (t) => t['内省深度'] > 2,
+    suggestions: ['记录你的梦境和沉思，它们蕴含你的内在语言', '你的深度需要找到可以承接它的人', '适度分享内心，不必把一切都藏起来']
+  },
+  {
+    name: '自由的探索者',
+    badge: '综合型 · 开放',
+    desc: '你的联想自由而多变，不拘泥于某一种模式。你对世界保持开放的好奇心，每一张图都能触发全新的视角。这种灵活性是你的优势，让你能在不同情境中快速适应。',
+    cond: () => true,
+    suggestions: ['好奇心是你最大的财富，继续保持', '尝试深入一个方向，看看专注能带给你什么', '你的开放性让人舒服，珍惜这份特质']
+  }
+];
+
+function analyzeAnswers() {
+  const allText = answers.map(a => a.text + ' ' + a.tags.join(' ')).join(' ');
+  const traits = {};
+  Object.keys(TRAIT_KEYWORDS).forEach(trait => {
+    let score = 0;
+    TRAIT_KEYWORDS[trait].forEach(kw => {
+      const re = new RegExp(kw, 'g');
+      const matches = allText.match(re);
+      if (matches) score += matches.length;
+    });
+    traits[trait] = score;
+  });
+
+  // normalize 0-10
+  const maxScore = Math.max(...Object.values(traits), 1);
+  const normalized = {};
+  Object.keys(traits).forEach(k => { normalized[k] = Math.min(10, Math.round(traits[k] / maxScore * 10) + Math.floor(Math.random() * 3)); });
+
+  // ensure minimum spread
+  Object.keys(normalized).forEach(k => { if (normalized[k] < 2) normalized[k] = 2 + Math.floor(Math.random() * 3); });
+
+  const type = TYPES.find(t => t.cond(traits)) || TYPES[TYPES.length - 1];
+  return { traits: normalized, type };
+}
+
+function showResult() {
+  document.getElementById('screen-test').classList.remove('active');
+  document.getElementById('screen-result').classList.add('active');
+
+  const { traits, type } = analyzeAnswers();
+
+  document.getElementById('res-title').textContent = type.name;
+  document.getElementById('res-badge').textContent = type.badge;
+  document.getElementById('res-desc').textContent = type.desc;
+
+  // trait bars
+  const tb = document.getElementById('trait-bars');
+  tb.innerHTML = '';
+  Object.entries(traits).forEach(([name, val]) => {
+    tb.innerHTML += `<div class="trait-row">
+      <span class="trait-name">${name}</span>
+      <div class="trait-track"><div class="trait-bar" data-val="${val * 10}" style="width:0%"></div></div>
+      <span class="trait-val">${val}</span>
+    </div>`;
+  });
+  setTimeout(() => {
+    document.querySelectorAll('.trait-bar').forEach(bar => {
+      bar.style.width = bar.dataset.val + '%';
+    });
+  }, 100);
+
+  // answers review
+  const ar = document.getElementById('answers-review');
+  ar.innerHTML = '';
+  answers.forEach((a, i) => {
+    if (!a.text && a.tags.length === 0) return;
+    ar.innerHTML += `<div class="answer-item">
+      <p class="answer-item-blot">图版 ${ROMAN[a.card]}</p>
+      <p class="answer-item-text">${a.text || '（未填写）'}</p>
+      ${a.tags.length ? `<p class="answer-item-tags">${a.tags.join(' · ')}</p>` : ''}
+    </div>`;
+  });
+
+  // suggestions
+  const sl = document.getElementById('suggestions');
+  sl.innerHTML = '';
+  type.suggestions.forEach(s => {
+    sl.innerHTML += `<div class="suggestion-item"><div class="sug-dot"></div><span>${s}</span></div>`;
+  });
+}
+
+function restartTest() {
+  answers = [];
+  currentCard = 0;
+  selectedTags = [];
+  document.getElementById('screen-result').classList.remove('active');
+  document.getElementById('screen-intro').classList.add('active');
+  generateLogoBlot();
+}
+
+function shareResult() {
+  const type = document.getElementById('res-title').textContent;
+  const badge = document.getElementById('res-badge').textContent;
+  const text = `【墨迹联想测试结果】\n我的类型是：${type}（${badge}）\n\n快来测测你是什么类型？`;
+  navigator.clipboard.writeText(text).then(() => {
+    alert('结果已复制到剪贴板，粘贴即可分享！');
+  }).catch(() => {
+    prompt('复制以下内容分享：', text);
+  });
+}
+
+// ─────────────────────────────────────────
+// LOGO BLOT (small)
+// ─────────────────────────────────────────
+function generateLogoBlot() {
+  const canvas = document.getElementById('logo-canvas');
+  if (!canvas) return;
+  generateInkblot(canvas, Math.floor(Date.now() / 1000 / 60), ['#1a1210']);
+}
+
+generateLogoBlot();
+</script>
+</body>
+</html>
